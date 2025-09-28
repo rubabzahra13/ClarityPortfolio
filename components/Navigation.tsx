@@ -2,88 +2,151 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
 
-const Navigation = () => {
+function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
 
+  // Detect scroll to change navbar background and active section
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 50);
+      
+      // Find which section is currently in view
+      const sections = ["about", "skills", "projects", "testimonials", "contact"];
+      const scrollPosition = window.scrollY + 100; // Offset for navbar
+
+      let currentSection = "";
+
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const offsetTop = element.offsetTop;
+          const offsetBottom = offsetTop + element.offsetHeight;
+          
+          // Check if section is in viewport with threshold
+          if (scrollPosition >= offsetTop - 100 && scrollPosition < offsetBottom - 100) {
+            currentSection = sectionId;
+            break;
+          }
+        }
+      }
+
+      // Only update if we found a valid section
+      if (currentSection) {
+        setActiveSection(currentSection);
+      }
     };
+
     window.addEventListener("scroll", handleScroll);
+    // Initial check after a small delay to ensure DOM is ready
+    setTimeout(handleScroll, 100);
+    
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navItems = ["About", "Skills", "Projects", "Testimonials", "Contact"];
-
   const scrollToSection = (id: string) => {
-    const element = document.getElementById(id.toLowerCase());
-    element?.scrollIntoView({ behavior: "smooth" });
     setIsOpen(false);
+    
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        const offset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth"
+        });
+        
+        // Update active section immediately
+        setActiveSection(id);
+      }
+    }, 100);
+  };
+
+  const navItems = [
+    { name: "About", id: "about" },
+    { name: "Skills", id: "skills" },
+    { name: "Projects", id: "projects" },
+    { name: "Testimonials", id: "testimonials" },
+    { name: "Contact", id: "contact" }
+  ];
+
+  const getNavItemClass = (itemId: string) => {
+    const baseClass = "transition-colors font-medium";
+    const activeClass = "text-accent";
+    const inactiveClass = "text-gray-300 hover:text-accent";
+    
+    return `${baseClass} ${activeSection === itemId ? activeClass : inactiveClass}`;
   };
 
   return (
-    <nav
+    <nav 
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? "bg-black/90 backdrop-blur-md border-b border-gray-800" : "bg-transparent"
+        isScrolled || isOpen 
+          ? "bg-background/95 backdrop-blur-md border-b border-gray-800" 
+          : "bg-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-xl font-bold text-white"
-          >
-            Portfolio<span className="text-accent">.</span>
-          </motion.div>
-
+          <div className="text-5xl font-bold text-white">Clarity INC.</div>
+          
           {/* Desktop Menu */}
           <div className="hidden md:flex space-x-8">
-            {navItems.map((item, index) => (
-              <motion.button
-                key={item}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => scrollToSection(item)}
-                className="text-gray-300 hover:text-accent transition-colors relative group"
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className={getNavItemClass(item.id)}
               >
-                {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent transition-all group-hover:w-full"></span>
-              </motion.button>
+                {item.name}
+              </button>
             ))}
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-white z-50"
+            className="md:hidden text-white p-2 rounded-lg hover:bg-surface transition-colors"
             onClick={() => setIsOpen(!isOpen)}
           >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} 
+              />
+            </svg>
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu with Background */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden overflow-hidden"
+              transition={{ duration: 0.3 }}
+              className="md:hidden bg-background/95 backdrop-blur-md border-t border-gray-800 overflow-hidden"
             >
               <div className="py-4 space-y-2">
                 {navItems.map((item) => (
                   <button
-                    key={item}
-                    onClick={() => scrollToSection(item)}
-                    className="block w-full text-left py-2 text-gray-300 hover:text-accent transition-colors"
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`block w-full text-left py-3 px-4 rounded-lg transition-all font-medium ${
+                      activeSection === item.id 
+                        ? "text-accent bg-surface/50" 
+                        : "text-gray-300 hover:text-accent hover:bg-surface/50"
+                    }`}
                   >
-                    {item}
+                    {item.name}
                   </button>
                 ))}
               </div>
@@ -93,6 +156,6 @@ const Navigation = () => {
       </div>
     </nav>
   );
-};
+}
 
 export default Navigation;
